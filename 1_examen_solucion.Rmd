@@ -1,0 +1,1126 @@
+---
+title: "Examen 1: muestreo estídistico"
+subtitle: "Unidad 1 y 2: muestreo aleatorio simple y muestro sistemático"
+author: "Julián Camilo Riaño Moreno"
+date: "`r format(Sys.Date(), '%A, %B %d, %Y')`"
+output:
+  pdf_document: 
+    keep_tex: yes
+    toc: yes
+    toc_depth: 3
+  html_document: 
+    keep_md: true
+    toc: yes
+    toc_float: true
+    code_folding: hide
+  keep_tex: yes
+  word_document: default
+  fig_cap: yes
+header-includes:
+- \usepackage{float}
+- \floatplacement{figure}{H}
+---
+
+```{r setup, include=FALSE}
+# define knitr options
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(echo = TRUE, fig.pos= "h")
+```
+
+```{r intalación de paquetes y librerias, include=FALSE}
+# instalar paquetes. 
+library(dplyr)
+library(readr)
+library(tidyverse)
+library(reshape)
+library(ggplot2)
+library(TeachingSampling)
+library(Rmpfr)
+library(pander) ##paquete para tablas pandoc
+```
+
+```{r carga de datos y construcción definir variables, include = FALSE}
+### Lectura de datos
+wine <- read_csv2("winequality-white.csv")
+### se define una semilla ###
+set.seed(123)
+
+```
+
+```{r Definición de funciones a muestreo Aleatorio simple , include=FALSE}
+p_size_simple <- function(df_s, error) {
+    df_s <- apply(df_s, 2, as.numeric)
+    N_pop <- nrow(df_s)
+    pil_size <- round(error*N_pop, 0)
+        piloto_size_N <- data.frame(N_pop, pil_size)
+    print(piloto_size_N)
+    
+}
+
+### formula para tabla de estimadores aleatorio simple###
+estm_pilot_simple <- function(df_data, error) {
+    N_pop <- nrow(df_data) 
+    pil_size <- round(error*N_pop, 0)
+    ID_pl <- sample(1:N_pop, size=pil_size,replace=FALSE)
+    pilot_num <- df_data[ID_pl, ]
+    piloto_df <- apply(pilot_num, 2, as.numeric)
+    piloto_df <- round(piloto_df, 3) 
+    #aplicación de estimadores
+        Media_var <- as.vector(apply(piloto_df, 2, mean))
+        E.Error <- as.vector(Media_var*0.05)
+        D.standard <- as.vector(apply(piloto_df, 2, sd))
+        sd_med_var <-  as.vector(D.standard/Media_var)
+    #Se construye df con los estimadores
+    df_st <- data.frame(Media_var, D.standard, sd_med_var, E.Error)
+    rownames(df_st) <- colnames(piloto_df)
+    piloto_size_N <- data.frame(N_pop, pil_size)
+    print(piloto_size_N)
+    print(df_st) #impresion del data.frame
+}
+
+#### formula para tabla de errores ####
+
+error_lst_simple <- function(data_est) {
+    mar_1 <- seq(0,data_est[1, 4]+0.01,by=0.25)
+    mar_2 <- seq(0,data_est[2, 4]+0.01, by=0.001)
+    mar_3 <- seq(0,data_est[3, 4], by=0.003)
+    mar_4 <- seq(0,data_est[4, 4]+0.01, by=0.03)
+    mar_5 <- seq(0,data_est[5, 4]+0.01, by=0.0005)
+    mar_6 <- seq(0,data_est[6, 4]+0.001, by=0.08)
+    mar_7 <- seq(0,data_est[7, 4], by=0.3)
+    mar_8 <- seq(0,data_est[8, 4]+0.01, by=0.005)
+    mar_9 <- seq(0,data_est[9, 4], by=0.6)
+    mar_10 <- seq(0,data_est[10, 4], by=0.003)
+    mar_11 <- seq(0,data_est[11, 4], by=0.2)
+    mar_12 <- seq(0,data_est[12, 4], by=0.01)
+    f_list <- list(mar_1, mar_2, mar_3, mar_4, mar_5, mar_6, 
+                   mar_7, mar_8, mar_9, mar_10, mar_11, mar_12)
+    n.obs <- sapply(f_list, length)
+    seq.max <- seq_len(max(n.obs))
+    meta <- data.frame(sapply(f_list, "[", i = seq.max))
+    colnames(meta) <- rownames(data_est)
+    print(meta)
+}
+
+
+###### función gráfica sola ######
+graph_inf.finite <- function(N, data_error, data_var, num_v, conf) {
+    require(reshape)
+    require(ggplot2)
+    nam_v <- names(data_error[num_v])
+    Z <- qnorm((1-conf)/2, mean = 0, sd = 1)
+    Error_v_s <- na.omit(data_error[, num_v])
+    sd_d <- data_var[num_v, 3]
+    P_infinite_s <- ((Z^2)*sd_d^2)/Error_v_s^2
+    P_finite_s <- P_infinite_s/(1+(P_infinite_s/N))
+    tabl_e_s <- data.frame(Error_v_s, P_infinite_s, P_finite_s)
+    ###melting para la gráfica####
+    dat.melt <- melt(tabl_e_s, id.vars = "Error_v_s")
+    ###inserta una elemento tipo gráfica de los errores###
+    graph <-ggplot(dat.melt, aes(Error_v_s, value, colour = variable)) + 
+        geom_point(size = 2) + 
+        labs(title = 
+                 paste('Muestreo por variable', '\"',nam_v, '\"'),
+             y = 'Tamaño de muestra', 
+             x = 'Errores', 
+             caption = "Método = muestro aleatorio simple") +
+        geom_line(linetype = "dashed")
+    graph1 <- graph + 
+        theme(plot.caption = element_text(hjust = 1, face = "italic"), 
+              legend.title = element_blank(), 
+              legend.position="bottom", legend.box = "horizontal")
+    print(graph1)
+}
+
+#### formula para muestreo con gráfica ####
+simple_inf.finite <- function(N, data_error, data_var, num_v, conf) {
+    require(reshape)
+    require(ggplot2)
+    nam_v <- names(data_error[num_v])
+    Z <- qnorm((1-conf)/2, mean = 0, sd = 1)
+    Error_v_s <- na.omit(data_error[, num_v])
+    sd_d <- data_var[num_v, 3]
+    P_infinite_s <- ((Z^2)*sd_d^2)/Error_v_s^2
+    P_finite_s <- P_infinite_s/(1+(P_infinite_s/N))
+    tabl_e_s <- data.frame(Error_v_s, P_infinite_s, P_finite_s)
+    ###melting para la gráfica####
+    dat.melt <- melt(tabl_e_s, id.vars = "Error_v_s")
+    ###inserta una elemento tipo gráfica de los errores###
+    graph <-ggplot(dat.melt, aes(Error_v_s, value, colour = variable)) + 
+        geom_point(size = 3) + 
+        labs(title = 
+                 paste('Muestreo por variable', '\"',nam_v, '\"'),
+             y = 'Tamaño de muestra', 
+             x = 'Errores', 
+             caption = "Método = muestro aleatorio simple") +
+        geom_line(linetype = "dashed")
+    graph1 <- graph + 
+        theme(plot.caption = element_text(hjust = 1, face = "italic"), 
+              legend.title = element_blank(), 
+              legend.position="bottom", legend.box = "horizontal")
+    print(graph1)
+    print(tabl_e_s)
+}
+
+# Formula para muestreo FINAL por método aleatorio simple
+sam_final_simple <- function(data_original, muestra_sel) {
+    require(TeachingSampling)
+    N_pop <- nrow(data_original)
+    sample_s <- sample(1:N_pop, size=muestra_sel,replace=FALSE)
+    muestra_f <- data_original[sample_s, ]
+    muestra_f <- (apply(muestra_f, 2, as.numeric))
+    print(data.frame(muestra_f))
+    
+}
+
+##### estimadores parte final ####
+est_final_simple <- function (data_sampling, n_var, N, muestra_sel) {
+    med_s <- mean(data_sampling[,n_var])
+    sd_s <- sd(data_sampling[,n_var])
+    Inf_int_s <- med_s - 2 * (sd_s/sqrt(muestra_sel))
+    Sup_int_s <- med_s + 2 * (sd_s/sqrt(muestra_sel))
+    Coef_var <- (sd_s/med_s)
+    var_var <- (sd_s^2/muestra_sel)*((N-muestra_sel)/N)
+    med_total <- med_s*N
+    v_t <- var_var*N^2
+    Inf_int_var <- med_s*N-2*sqrt(v_t)
+    Sup_int_var <- med_s*N+2*sqrt(v_t)
+    col_noms <- c('n', 'Int. Inferior', 'Media muestra', 'Int. Superior', 
+                  'Desviación std.','Varianza', 'Coeficiente var.',
+                  'Int. Inferior total', 'Media Total', 
+                  'Int. Superior Total', 'Varianza Total')
+    results <- data.frame(muestra_sel, Inf_int_s,med_s,
+                          Sup_int_s, sd_s, var_var, Coef_var,
+                          Inf_int_var, med_total, 
+                          Sup_int_var, v_t)
+    rownames(results) <- names(data_sampling[n_var])
+    colnames(results) <- col_noms
+    print(results)
+}
+
+
+```
+
+```{r Definición de funciones a muestreo sistemático , include = FALSE}
+### formula para tamaño de muestra piloto y Kp
+p_size_sys <- function(df, error) {
+    N_pop <- nrow(df)
+    pil_size <- round(error*N_pop, 0)
+    Kp <- round(N_pop/pil_size, 0)
+    print(data.frame(N_pop, pil_size, Kp))
+}
+
+####formular para estimadores de piloto sistemático######
+estm_pilot_sys <- function(df, N_pop, kp, N_confianza) {
+    require(TeachingSampling)
+    s_system <- S.SY(N_pop,kp) ### se requiere paquete TeachingSampling para función S.SY
+    df_samp <- df[s_system,]
+    ### ajuste de la base a datos númericos###
+    s_num <- apply(df_samp, 2, as.numeric)
+    s_num <- round(s_num, 3) ### evaluar si es necesario redondear
+    #Se aplican primero estimadores#
+        Media <- as.vector(apply(s_num, 2, mean))
+        Error <- as.vector(Media*0.05)
+        Varianza <- as.vector(apply(s_num, 2, var))
+    #Se construye df con los estimadores
+    df_st <- data.frame(Media, Error, Varianza)
+        rownames(df_st) <- colnames(s_num)
+    Z <- qnorm((1-N_confianza)/2, mean = 0, sd = 1) # valor Z
+    #Se crean dos nuevas columnas con los tamaños por variable con y sin N
+    Size_out_N <- round((Z^2*df_st$Varianza)/df_st$Error^2, 0)
+    Size_with_N <- round(Size_out_N /(1+(Size_out_N/N_pop)),0)
+    df_st <- cbind(df_st, Size_out_N, Size_with_N)
+    print(df_st) #impresion del data.frame
+}
+
+
+#### Función errores ####
+error_df_var <- function(data_est) {
+    mar_1 <- seq(0,data_est[1, 2]+0.8,by=0.08)
+    mar_2 <- seq(0,data_est[2, 2]+0.01, by=0.0006)
+    mar_3 <- seq(0,data_est[3, 2], by=0.0004)
+    mar_4 <- seq(0,data_est[4, 2]+0.1, by=0.01)
+    mar_5 <- seq(0,data_est[5, 2]+0.001, by=0.00008)
+    mar_6 <- seq(0,data_est[6, 2], by=0.04)
+    mar_7 <- seq(0,data_est[7, 2]+0.9, by=0.2)
+    mar_8 <- seq(0,data_est[8, 2]+0.01, by=0.0015)
+    mar_9 <- seq(0,data_est[9, 2], by=0.3)
+    mar_10 <- seq(0,data_est[10, 2], by=0.0006)
+    mar_11 <- seq(0,data_est[11, 2], by= 1000000000)
+    mar_12 <- seq(0,data_est[12, 2], by=0.0065)
+    f_list <- list(mar_1, mar_2, mar_3, mar_4, mar_5, mar_6, 
+                   mar_7, mar_8, mar_9, mar_10, mar_11, mar_12)
+    n.obs <- sapply(f_list, length)
+    seq.max <- seq_len(max(n.obs))
+    meta <- data.frame(sapply(f_list, "[", i = seq.max))
+    colnames(meta) <- rownames(data_est)
+    print(meta)
+}
+
+#### función para muestreo población finita e infinita ####
+
+pob_inf.finite <- function(N, data_error, data_est, num_v, conf) {
+    require(reshape)
+    require(ggplot2)
+    nam_v <- names(data_error[num_v])
+    Z <- qnorm((1-conf)/2, mean = 0, sd = 1)
+    Error_v <- na.omit(data_error[, num_v])
+    var_d <- data_est[num_v, 3]
+    P_infinite <- ((Z^2)*var_d)/Error_v^2
+    P_finite <- P_infinite/(1+(P_infinite/N))
+    tabl_e_s <- data.frame(Error_v, P_infinite, P_finite)
+    ###melting para la gráfica####
+        dat.melt <- melt(tabl_e_s, id.vars = "Error_v")
+    ###inserta una elemento tipo gráfica de los errores###
+    graph <-ggplot(dat.melt, aes(Error_v, value, colour = variable)) + 
+            geom_point(size = 3) + 
+            labs(title = 
+                     paste('Muestreo por variable', '\"',nam_v, '\"'),
+                 y = 'Tamaño de muestra', 
+                 x = 'Errores',
+                 caption = "Método = muestro sistemático") +
+            geom_line(linetype = "dashed") 
+    graph1 <- graph + 
+        theme(plot.caption = element_text(hjust = 1, face = "italic"), 
+              legend.title = element_blank(), 
+              legend.position="bottom", legend.box = "horizontal")
+    print(graph1)
+    print(tabl_e_s)
+}
+
+###GRafica sola ####
+Gr.sys_inf.finite <- function(N, data_error, data_est, num_v, conf) {
+    require(reshape)
+    require(ggplot2)
+    nam_v <- names(data_error[num_v])
+    Z <- qnorm((1-conf)/2, mean = 0, sd = 1)
+    Error_v <- na.omit(data_error[, num_v])
+    var_d <- data_est[num_v, 3]
+    P_infinite <- ((Z^2)*var_d)/Error_v^2
+    P_finite <- P_infinite/(1+(P_infinite/N))
+    tabl_e_s <- data.frame(Error_v, P_infinite, P_finite)
+    ###melting para la gráfica####
+    dat.melt <- melt(tabl_e_s, id.vars = "Error_v")
+    ###inserta una elemento tipo gráfica de los errores###
+    graph <-ggplot(dat.melt, aes(Error_v, value, colour = variable)) + 
+        geom_point(size = 2) + 
+        labs(title = 
+                 paste('Muestreo por variable', '\"',nam_v, '\"'),
+             y = 'Tamaño de muestra', 
+             x = 'Errores',
+             caption = "Método = muestro sistemático") +
+        geom_line(linetype = "dashed") 
+    graph1 <- graph + 
+        theme(plot.caption = element_text(hjust = 1, face = "italic"), 
+              legend.title = element_blank(), 
+              legend.position="bottom", legend.box = "horizontal")
+    print(graph1)
+    }
+
+
+
+
+# Formula para muestreo FINAL
+samp_final <- function(data_original, muestra_sel) {
+    require(TeachingSampling)
+    N_pop <- nrow(data_original)
+    k_total <- round(N_pop/muestra_sel)
+    sample_1 <- S.SY(N_pop, k_total)
+    data_fin <- data_original[sample_1,]
+    data_fin <- (apply(data_fin, 2, as.numeric))
+    print(data.frame(data_fin))
+    
+}
+
+#####función para obtención de estimadores finales ####
+est_final_sys <- function (data_sampling, n_var, N, muestra_sel) {
+    k_total <- round(N/muestra_sel)
+    med_s <- mean(data_sampling[,n_var])
+    sd_s <- sd(data_sampling[,n_var])
+    Inf_int_s <- med_s - 2 * (sd_s/sqrt(muestra_sel))
+    Sup_int_s <- med_s + 2 * (sd_s/sqrt(muestra_sel))
+    Coef_var <- (sd_s/med_s)
+    var_var <- (sd_s^2/muestra_sel)*((N-muestra_sel)/N)
+    med_total <- med_s*N
+    v_t <- var_var*N^2
+    Inf_int_var <- med_s*N-2*sqrt(v_t)
+    Sup_int_var <- med_s*N+2*sqrt(v_t)
+    col_noms <- c('n', 'kp', 'Int. Inferior', 'Media muestra', 'Int. Superior', 
+                  'Desviación std.','Varianza', 'Coeficiente var.',
+                  'Int. Inferior total', 'Media Total', 
+                  'Int. Superior Total', 'Varianza Total')
+    results <- data.frame(muestra_sel, k_total, Inf_int_s,med_s,
+               Sup_int_s, sd_s, var_var, Coef_var,
+                Inf_int_var, med_total, 
+               Sup_int_var, v_t)
+    rownames(results) <- names(data_sampling[n_var])
+    colnames(results) <- col_noms
+    print(results)
+}
+
+```
+
+# Actividad
+
+>Este conjunto de datos también está disponible en el repositorio de aprendizaje automático de [UCI (Universidad de California en Irvine)], (https://archive.ics.uci.edu/ml/datasets/wine+quality). Estos conjuntos de datos están relacionados con variantes rojas del vino portugués "Vinho Verde". Para más detalles, consulte la referencia [Cortez et al., 2009]. 
+
+>Variables de entrada (basadas en pruebas fisicoquímicas):
+
+1. fixed acidity
+2. volatile acidity
+3. citric acid
+4. residual sugar
+5. chlorides
+6. free sulfur dioxide
+7. total sulfur dioxide
+8. density
+9. pH
+10. sulphates
+11. alcohol
+12. quality (score between 0 and 10)
+
+>Lo contratan para hacer un análisis de muestreo con esta base de datos, con el objetivo de poder hacer un análisis descriptivo e inferencial. 
+
+>Utilice el método de muestreo aleatorio simple y sistemático para determinar lo siguiente:
+
+
+# Solución de la actividad
+
+## Introducción y especificaciones generales
+
+La base de datos entregada corresponde a un archivo que contiene 12 variables y 4898 observaciones. Por tal razón, se conoce el tamaño de la población que se está estudiante para este caso $N = 4898$. 
+
+Para realizar los análisis de manera más eficiente se definieron 10 funciones para el muestreo aleatorio simple como para el muestro sistemático. que se pueden ver en los archivos en el siguiente repositorio propio de Github: 
+
+Dichas funciones realizan el procesamiento visto en clase para una sola variable directamente para todas las variables, de esta forma la información en este documento será definida de esta misma forma. D
+
+Dedido al procesamiento en formato: binary floating-point de *R*, algunas tablas se mostrarán en números flotantes. Si se desea hacer la verificación y comprobación de dichos números se puede utilizar la siguiente función propia que verifica data.frames a través de la función `mpfr` del paquete `Rmpfr` para manejo de números flotantes.
+
+
+```{r Verificación de números flotantes, message=FALSE}
+########## Revisión tablas con números flotantes ############
+mpfr_zing <- function(df_revisar) {
+    require(Rmpfr)
+    matrix_float <- as.matrix(df_revisar)
+    mpfr_x <- mpfr(matrix_float, precBits = 32)
+    print(mpfr_x)}
+#############################################################
+```
+
+Inicialmente se decide para este ejericio trabajar con un errro de $0.05$ y una nivel de confianza de $95%$. Para hacer los datos reproducibles se asigno un valor de estandar a traves de la función `set.seed  = 123`. 
+
+
+## Muestreo Aleatorio simple
+
+Inicialmente se realizó un análisis de muestreo para la prueba piloto. Para esto se tomaron todos las observaciones como población total y se aplicó un error de $0.05$, a través de esto, y como se puede observar en la tabla 1.  se obtuvo que el tamaño (n = `pil_size`) para el piloto es de $n = 245$. 
+
+### Definición de la muestra piloto para cada variable
+
+```{r tabla 1, include=FALSE}
+tab_1 <- p_size_simple(wine, 0.05)
+```
+
+```{r Tabla para pilotos, echo=FALSE, message=FALSE, results='asis'}
+pandoc.table(tab_1,
+             caption = 'Tamaño población (N) y muestra (n) para el piloto',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r definición estimadores, include=FALSE}
+est_aleat_simple <- estm_pilot_simple(wine, 0.05)
+```
+
+```{r estimadores del piloto, echo=FALSE, message=FALSE, results='asis'}
+pandoc.table(est_aleat_simple,
+             caption = 'Estimadores de la muestra piloto',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r tabla de errores aleatorio simple, include=FALSE}
+e_list_simple <- error_lst_simple(est_aleat_simple)
+```
+
+```{r errores para el piloto aleatorio simple, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(e_list_simple,
+             caption = 
+                 'Tabla de margen de error para cada una de las variables',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r tabla de errores var1, include=FALSE}
+v_1_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 1, 0.95)
+```
+
+```{r tabla gráfica var1, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_1_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 1: fixed acidity)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica var1, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 1'}
+v_1_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 1, 0.95)
+```
+
+```{r tabla de errores var2, include=FALSE}
+v_2_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 2, 0.95)
+```
+
+```{r tabla gráfica var2, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_2_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 2: volatile acidity)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica var2, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 2'}
+v_2_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 2, 0.95)
+```
+
+```{r tabla de errores var3, include=FALSE}
+v_3_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 3, 0.95)
+```
+
+```{r tabla gráfica var3, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_3_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 3: citric acid)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va3, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 3'}
+v_3_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 3, 0.95)
+```
+
+```{r tabla de errores var4, include=FALSE}
+v_4_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 4, 0.95)
+```
+
+```{r tabla gráfica var4, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_4_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 4: residual sugar)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va4, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 4'}
+v_4_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 4, 0.95)
+```
+
+```{r tabla de errores var5, include=FALSE}
+v_5_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 5, 0.95)
+```
+
+```{r tabla gráfica var5, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_5_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 5: chlorides)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va5, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 5'}
+v_5_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 5, 0.95)
+```
+
+```{r tabla de errores var6, include=FALSE}
+v_6_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 6, 0.95)
+```
+
+```{r tabla gráfica var6, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_6_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 6: free sulfur dioxide)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va6, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 6'}
+v_6_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 6, 0.95)
+```
+
+```{r tabla de errores var7, include=FALSE}
+v_7_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 7, 0.95)
+```
+
+```{r tabla gráfica var7, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_7_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 7: total sulfur dioxide)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va7, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 7'}
+v_7_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 7, 0.95)
+```
+
+```{r tabla de errores var8, include=FALSE}
+v_8_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 8, 0.95)
+```
+
+```{r tabla gráfica var8, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_8_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 8: density)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va8, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 8'}
+v_8_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 8, 0.95)
+```
+
+```{r tabla de errores var9, include=FALSE}
+v_9_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 9, 0.95)
+```
+
+```{r tabla gráfica var9, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_9_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 9: pH)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va9, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 9'}
+v_9_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 9, 0.95)
+```
+
+```{r tabla de errores var10, include=FALSE}
+v_10_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 10, 0.95)
+```
+
+```{r tabla gráfica var10, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_10_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 10: sulphates)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va10, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 10'}
+v_10_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 10, 0.95)
+```
+
+```{r tabla de errores var11, include=FALSE}
+v_11_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 11, 0.95)
+```
+
+```{r tabla gráfica var11, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_11_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 12: sulphates)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va11, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 11'}
+v_11_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 11, 0.95)
+```
+
+```{r tabla de errores var12, include=FALSE}
+v_11_simple <- simple_inf.finite(4898, e_list_simple, est_aleat_simple, 12, 0.95)
+```
+
+```{r tabla gráfica var12, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v_11_simple,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 12: sulphates)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica va12, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 12'}
+v_12_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 12, 0.95)
+```
+
+
+### Errores aceptados y definición de tamaño de muestra para cada variable.
+
+```{r n y error para cada variable alea simple, echo=FALSE, message=FALSE, results='asis'}
+### selección de n = para cada variable ####
+Col_acept <- c('Error aceptado', 'Tamaño de muestra (n)')
+Error_acp <- c(0.25, 0.015, 0.012, 0.03, 0.012, 0.08, 0.3, 0.005, 0.6, 0.006, 0.2, 0.01)
+n_sample <- c(6,  1290, 1888, 1765, 2944, 342,  3, 2, 2, 2749, 152, 668)
+df_ns_simples <- data.frame(Error_acp, n_sample)
+colnames(df_ns_simples) <- Col_acept
+rownames(df_ns_simples) <- names(wine)
+panderOptions('missing', '---')
+pandoc.table(df_ns_simples,
+             caption = 
+             'Tabla de errores aceptados y valores de tamaño de muestra (n)
+             seleccionado para cada variable',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+
+### Estimadores de las muestra finales utilizando el tamaño de muestra seleccionado para cada variable.
+
+```{r estimadores finales simple 1, include=FALSE, echo=FALSE}
+simple_v1 <- sam_final_simple(wine, 6)
+simple_v2 <- sam_final_simple(wine, 1290)
+simple_v3 <- sam_final_simple(wine, 1888)
+simple_v4 <- sam_final_simple(wine, 1765)
+simple_v5 <- sam_final_simple(wine, 2944)
+simple_v6 <- sam_final_simple(wine, 342)
+simple_v7 <- sam_final_simple(wine, 3)
+simple_v8 <- sam_final_simple(wine, 2)
+simple_v9 <- sam_final_simple(wine, 2)
+simple_v10 <- sam_final_simple(wine, 2749)
+simple_v11 <- sam_final_simple(wine, 152)
+simple_v12 <- sam_final_simple(wine, 668)
+
+x_1simple1<- est_final_simple(simple_v1, 1, 4898, 6)
+x_2simple2 <- est_final_simple(simple_v2, 2, 4898, 1290)
+x_3simple3 <- est_final_simple(simple_v3, 3, 4898, 1888)
+x_4simple4 <- est_final_simple(simple_v4, 4, 4898, 1765)
+x_5simple5 <- est_final_simple(simple_v5, 5, 4898, 2944)
+x_6simple6 <- est_final_simple(simple_v6, 6, 4898, 342)
+x_7simple7 <- est_final_simple(simple_v7, 7, 4898, 3)
+x_8simple8 <- est_final_simple(simple_v8, 8, 4898, 2)
+x_9simple9 <- est_final_simple(simple_v9, 9, 4898, 2)
+x_10simple10 <- est_final_simple(simple_v10, 10, 4898, 2749)
+x_11simple11 <- est_final_simple(simple_v11, 11, 4898, 152)
+x_12simple12 <- est_final_simple(simple_v12, 12, 4898, 668)
+
+df_SIMPLE_final<- as.data.frame(rbind(x_1simple1, x_2simple2, x_3simple3, 
+                      x_4simple4, x_5simple5, x_6simple6, 
+                      x_7simple7, x_8simple8, x_9simple9, 
+                      x_10simple10, x_11simple11, x_12simple12))
+
+```
+
+```{r estimadores finales simple_ 1, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             para cada variable usando el valor de $n$ resultado del piloto',
+             digits = 3,
+             split.cells = 2,
+             split.table = 90,
+             align = 'r')
+```
+
+
+## Muestreo sistematico
+
+Para este análisis de muestreo sistemático se tomaron todos las observaciones como población total y se aplicó un error de $0.05$, a través de esto, y como se puede observar en la tabla 1.  se obtuvo que el tamaño (n = `pil_size`) para el piloto es de $n = 245$ y un valor $k = 20$ (se uso el mismo valor de semilla para este muestreo), ver tabla 19. 
+
+### Definición de la muestra piloto para cada variable (muestreo sistemático)
+
+```{r tabla 1 sys, include=FALSE}
+tab_2 <- p_size_sys(wine, 0.05)
+```
+
+```{r Tabla para pilotos sys, echo=FALSE, message=FALSE, results='asis'}
+pandoc.table(tab_2,
+             caption = 'Tamaño población (N) y muestra (n) 
+             para el piloto (muestreo sistemático',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r definición estimadores sys, include=FALSE}
+tab_est <- estm_pilot_sys(wine, 4898, 20, 0.95)
+```
+
+```{r estimadores del piloto sys, echo=FALSE, message=FALSE, results='asis'}
+pandoc.table(tab_est,
+             caption = 'Estimadores de la muestra piloto por muestreo sistemático (size_out_N = estimación pop. infinita; size_with_N = estimación pop. finita)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r tabla de errores aleatorio simple sys, include=FALSE}
+e_list <- error_df_var(tab_est)
+```
+
+```{r errores para el piloto aleatorio simple sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(e_list,
+             caption = 
+                 'Tabla de margen de error para cada una de las variables',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r tabla de errores var1 sys, include=FALSE}
+v1_sys <- pob_inf.finite(4898, e_list, tab_est, 1, 0.95)
+```
+
+```{r tabla gráfica var1 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v1_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 1: fixed acidity)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica var1 sys1, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 1'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 1, 0.95)
+```
+
+```{r tabla de errores var2 sys, include=FALSE}
+v2_sys <- pob_inf.finite(4898, e_list, tab_est, 2, 0.95)
+```
+
+```{r tabla gráfica var2 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v2_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 2: volatile acidity)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica var2 sys2, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 2'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 2, 0.95)
+```
+
+```{r tabla de errores var3 sys, include=FALSE}
+v3_sys <- pob_inf.finite(4898, e_list, tab_est, 3, 0.95)
+```
+
+```{r tabla gráfica var3 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v3_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 3: citric acid)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys3, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 3'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 3, 0.95)
+```
+
+```{r tabla de errores var4 sys, include=FALSE}
+v4_sys <- pob_inf.finite(4898, e_list, tab_est, 4, 0.95)
+```
+
+```{r tabla gráfica var4 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v4_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 4: residual sugar)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys4, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 4'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 4, 0.95)
+```
+
+```{r tabla de errores var5 sys, include=FALSE}
+v5_sys <- pob_inf.finite(4898, e_list, tab_est, 5, 0.95)
+```
+
+```{r tabla gráfica var5 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v5_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 5: chlorides)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys5, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 5'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 5, 0.95)
+```
+
+```{r tabla de errores var6 sys, include=FALSE}
+v6_sys <- pob_inf.finite(4898, e_list, tab_est, 6, 0.95)
+```
+
+```{r tabla gráfica var6 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v6_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 6: free sulfur dioxide )',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys6, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 6'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 6, 0.95)
+```
+
+```{r tabla de errores var7 sys, include=FALSE}
+v7_sys <- pob_inf.finite(4898, e_list, tab_est, 7, 0.95)
+```
+
+```{r tabla gráfica var7 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v7_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 7: total sulfur dioxide)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys7, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 7'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 7, 0.95)
+```
+
+```{r tabla de errores var8 sys, include=FALSE}
+v8_sys <- pob_inf.finite(4898, e_list, tab_est, 8, 0.95)
+```
+
+```{r tabla gráfica var8 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v8_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 8: density)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys8, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 8'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 8, 0.95)
+```
+
+```{r tabla de errores var9 sys, include=FALSE}
+v9_sys <- pob_inf.finite(4898, e_list, tab_est, 9, 0.95)
+```
+
+```{r tabla gráfica var9 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v9_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 9: pH)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys9, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 9'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 9, 0.95)
+```
+
+```{r tabla de errores var10 sys, include=FALSE}
+v10_sys <- pob_inf.finite(4898, e_list, tab_est, 10, 0.95)
+```
+
+```{r tabla gráfica var10 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v10_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 10: sulphates)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys10, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 10'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 10, 0.95)
+```
+
+```{r tabla de errores var11 sys, include=FALSE}
+v11_sys <- pob_inf.finite(4898, e_list, tab_est, 11, 0.95)
+```
+
+```{r tabla gráfica var11 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v11_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 11: alcohol)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys11, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 11'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 11, 0.95)
+```
+
+```{r tabla de errores var12 sys, include=FALSE}
+v12_sys <- pob_inf.finite(4898, e_list, tab_est, 12, 0.95)
+```
+
+```{r tabla gráfica var12 sys, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(v12_sys,
+             caption = 
+                 'Tabla de margen de error y 
+             tamaños de muestra estimados para población infinita y finita
+             (variable 12: quality)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+```{r grafica sys12, echo=FALSE, message=FALSE, results='asis', fig.cap= 'Gráfica comparación muestra para población infinita y finita Variable 12'}
+Gr.sys_inf.finite(4898, e_list, tab_est, 12, 0.95)
+```
+
+
+### Errores aceptados y definición de tamaño de muestra para cada variable (muestreo sistemático).
+
+
+```{r n y error para cada variable SYS, echo=FALSE, message=FALSE, results='asis'}
+### selección de n = para cada variable ####
+Col_acept_sys <- c('Error aceptado', 'Tamaño de muestra (n)')
+Error_acp_sys <- c(0.72, 0.003, 0.0032, 0.17, 0.00048, 1.16, 6, 0.0015, 2.7, 0.003, 2e+10, 0.026)
+n_sample_sys <- c(2177,  2444, 2457, 2502, 2012, 2501,  2470, 26, 2570, 2591, 4838, 2136)
+df_ns_sys <- data.frame(Error_acp_sys, n_sample_sys)
+colnames(df_ns_sys) <- Col_acept_sys
+rownames(df_ns_sys) <- names(wine)
+panderOptions('missing', '---')
+pandoc.table(df_ns_sys,
+             caption = 
+             'Tabla de errores aceptados y valores de tamaño de muestra (n)
+             seleccionado para cada variable (muestreo sistemático)',
+             digits = 4,
+             split.table = Inf,
+             align = 'r')
+```
+
+
+### Estimadores de las muestra finales utilizando el tamaño de muestra seleccionado para cada variable (muestreo sistemático)
+
+```{r estimadores finales sys simple 1, include=FALSE, echo=FALSE}
+sys_v1 <- samp_final(wine, 2177)
+sys_v2 <- samp_final(wine, 2444)
+sys_v3 <- samp_final(wine, 2457)
+sys_v4 <- samp_final(wine, 2502)
+sys_v5 <- samp_final(wine, 2012)
+sys_v6 <- samp_final(wine, 2501)
+sys_v7 <- samp_final(wine, 2470)
+sys_v8 <- samp_final(wine, 26)
+sys_v9 <- samp_final(wine, 2570)
+sys_v10 <- samp_final(wine, 2591)
+sys_v11 <- samp_final(wine, 4838)
+sys_v12 <- samp_final(wine, 2136)
+
+x_1sys1<- est_final_sys(sys_v1, 1, 4898, 2177)
+x_2sys2 <- est_final_sys(sys_v2, 2, 4898, 2444)
+x_3sys3 <- est_final_sys(sys_v3, 3, 4898, 2457)
+x_4sys4 <- est_final_sys(sys_v4, 4, 4898, 2502)
+x_5sys5 <- est_final_sys(sys_v5, 5, 4898, 2012)
+x_6sys6 <- est_final_sys(sys_v6, 6, 4898, 2501)
+x_7sys7 <- est_final_sys(sys_v7, 7, 4898, 2470)
+x_8sys8 <- est_final_sys(sys_v8, 8, 4898, 26)
+x_9sys9 <- est_final_sys(sys_v9, 9, 4898, 2570)
+x_10sys10 <- est_final_sys(sys_v10, 10, 4898, 2591)
+x_11sys11 <- est_final_sys(sys_v11, 11, 4898, 4838)
+x_12sys12 <- est_final_sys(sys_v12, 12, 4898, 2136)
+
+df_sys_final<- as.data.frame(rbind(x_1sys1, x_2sys2, x_3sys3, 
+                      x_4sys4, x_5sys5, x_6sys6, 
+                      x_7sys7, x_8sys8, x_9sys9, 
+                      x_10sys10, x_11sys11, x_12sys12))
+
+```
+
+```{r estimadores finales sys1, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_sys_final,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             para cada variable usando el valor de $n$ resultado del piloto',
+             digits = 3,
+             split.cells = 2,
+             split.table = 90,
+             align = 'r')
+```
+
+
