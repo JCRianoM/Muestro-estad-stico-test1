@@ -7,10 +7,10 @@ library (TeachingSampling)
 library (readr)
 
 ####Base de datos ORIGINAL#### (como la tengan en el archivo de origen)
-wine <- read_csv2("winequality-white.csv") ## acá la llame "wine"
+wine <- read_csv2("winequality-white.csv") ## ac? la llame "wine"
 ############################################################
 
-### esta versión solo útiliza dos argumentos (n y df). n = es el tamaÃ±o de muestra seleccionado, 
+### esta versi?n solo ?tiliza dos argumentos (n y df). n = es el tamaÃ±o de muestra seleccionado, 
 ### df = a la base de datos original. 
 est_total_sys2<- function(n, df){
     require(TeachingSampling) # requiere este paquete y tener esta librerÃ­a cargada
@@ -21,10 +21,10 @@ est_total_sys2<- function(n, df){
     df_f <- apply(df_f, 2, as.numeric) # se hacen numericas todas las columnas
     df_f <- as.data.frame(df_f) # se pasa a data frame en caso que no lo sea
     table <- matrix(NA, nrow = 12, ncol = (dim(df_f)[2])) 
-    rownames(table) = c('n', 'kp', 'Int. Inferior', 'Media muestra', 'Int. Superior', 
+    rownames(table) = c('n', 'kp', 'Int. Inferior', 'Media muestra', 'Int.Superior', 
                         'Desviacion std.','Varianza', 'Coeficiente var.',
-                        'Int. Inferior total', 'Media Total', 
-                        'Int. Superior Total', 'Varianza Total')
+                        'Int.Inferior total', 'Media Total', 
+                        'Int.Superior Total', 'Varianza Total')
     colnames(table) <- names(df)
     for (k in 1:dim(df_f)[2]) {
         med_s <- mean(df_f[,k]) # se obtiene la media para todas las variables
@@ -37,10 +37,6 @@ est_total_sys2<- function(n, df){
         v_t <- var_var*N^2 # se obtiene la varianza total para todas las variables
         Inf_int_var <- med_s*N-2*sqrt(v_t) # se obtiene el intevalo inf media total para todas las variables
         Sup_int_var <- med_s*N+2*sqrt(v_t) # se obtiene el intevalo sup media total para todas las variables
-        col_noms <- c('n', 'kp', 'Int.Inferior', 'Media muestra', 'Int.Superior', 
-                      'Desviacion std.','Varianza', 'Coeficiente var.',
-                      'Int.Inferior total', 'Media Total', 
-                      'Int. Superior Total', 'Varianza Total')
         table[, k] <- c(n, kp, Inf_int_s, med_s, Sup_int_s, sd_s, var_var,
                         Coef_var, Inf_int_var, med_total, Sup_int_var,v_t)
     }
@@ -68,10 +64,10 @@ est_total_simple2<- function(n, df){
     df_f <- apply(df_f, 2, as.numeric) # se hacen numericas todas las columnas
     df_f <- as.data.frame(df_f) # se pasa a data frame en caso que no lo sea
     table <- matrix(NA, nrow = 11, ncol = (dim(df_f)[2])) 
-    rownames(table) = c('n', 'Int. Inferior', 'Media muestra', 'Int. Superior', 
+    rownames(table) = c('n', 'Int.Inferior', 'Media muestra', 'Int.Superior', 
                         'Desviacion std.','Varianza', 'Coeficiente var.',
-                        'Int. Inferior total', 'Media Total', 
-                        'Int. Superior Total', 'Varianza Total')
+                        'Int.Inferior total', 'Media Total', 
+                        'Int.Superior Total', 'Varianza Total')
     colnames(table) <- names(df)
     for (k in 1:dim(df_f)[2]) {
         med_s <- mean(df_f[,k]) # se obtiene la media para todas las variables
@@ -84,10 +80,6 @@ est_total_simple2<- function(n, df){
         v_t <- var_var*N^2 # se obtiene la varianza total para todas las variables
         Inf_int_var <- med_s*N-2*sqrt(v_t) # se obtiene el intevalo inf media total para todas las variables
         Sup_int_var <- med_s*N+2*sqrt(v_t) # se obtiene el intevalo sup media total para todas las variables
-        col_noms <- c('Int.Inferior', 'Media muestra', 'Int.Superior', 
-                      'Desviacion std.','Varianza', 'Coeficiente var.',
-                      'Int.Inferior total', 'Media Total', 
-                      'Int. Superior Total', 'Varianza Total')
         table[, k] <- c(n, Inf_int_s, med_s, Sup_int_s, sd_s, var_var,
                         Coef_var, Inf_int_var, med_total, Sup_int_var,v_t)
     }
