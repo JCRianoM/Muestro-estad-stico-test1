@@ -43,7 +43,7 @@ library(pander) ##paquete para tablas pandoc
 
 ```{r carga de datos y construcción definir variables, include = FALSE}
 ### Lectura de datos
-wine <- read_csv2("winequality-white.csv")
+wine <- read.csv2("winequality-white.csv")
 ### se define una semilla ###
 set.seed(123)
 
@@ -83,18 +83,18 @@ estm_pilot_simple <- function(df_data, error) {
 #### formula para tabla de errores ####
 
 error_lst_simple <- function(data_est) {
-    mar_1 <- seq(0,data_est[1, 4]+0.01,by=0.25)
-    mar_2 <- seq(0,data_est[2, 4]+0.01, by=0.001)
-    mar_3 <- seq(0,data_est[3, 4], by=0.003)
-    mar_4 <- seq(0,data_est[4, 4]+0.01, by=0.03)
-    mar_5 <- seq(0,data_est[5, 4]+0.01, by=0.0005)
-    mar_6 <- seq(0,data_est[6, 4]+0.001, by=0.08)
-    mar_7 <- seq(0,data_est[7, 4], by=0.3)
-    mar_8 <- seq(0,data_est[8, 4]+0.01, by=0.005)
-    mar_9 <- seq(0,data_est[9, 4], by=0.6)
-    mar_10 <- seq(0,data_est[10, 4], by=0.003)
-    mar_11 <- seq(0,data_est[11, 4], by=0.2)
-    mar_12 <- seq(0,data_est[12, 4], by=0.01)
+    mar_1 <- seq(0,data_est[1, 4]+0.01,by=0.01)
+    mar_2 <- seq(0,data_est[2, 4]+0.01, by=0.00065)
+    mar_3 <- seq(0,data_est[3, 4], by=0.0005)
+    mar_4 <- seq(0,data_est[4, 4]+0.01, by=0.0075)
+    mar_5 <- seq(0,data_est[5, 4]+0.01, by=0.00035)
+    mar_6 <- seq(0,data_est[6, 4]+0.001, by=0.05)
+    mar_7 <- seq(0,data_est[7, 4], by=0.2)
+    mar_8 <- seq(0,data_est[8, 4]+0.01, by=0.0015)
+    mar_9 <- seq(0,data_est[9, 4], by=0.004)
+    mar_10 <- seq(0,data_est[10, 4], by=0.0007)
+    mar_11 <- seq(0,data_est[11, 4], by=0.015)
+    mar_12 <- seq(0,data_est[12, 4], by=0.0075)
     f_list <- list(mar_1, mar_2, mar_3, mar_4, mar_5, mar_6, 
                    mar_7, mar_8, mar_9, mar_10, mar_11, mar_12)
     n.obs <- sapply(f_list, length)
@@ -176,28 +176,35 @@ sam_final_simple <- function(data_original, muestra_sel) {
 }
 
 ##### estimadores parte final ####
-est_final_simple <- function (data_sampling, n_var, N, muestra_sel) {
-    med_s <- mean(data_sampling[,n_var])
-    sd_s <- sd(data_sampling[,n_var])
-    Inf_int_s <- med_s - 2 * (sd_s/sqrt(muestra_sel))
-    Sup_int_s <- med_s + 2 * (sd_s/sqrt(muestra_sel))
-    Coef_var <- (sd_s/med_s)
-    var_var <- (sd_s^2/muestra_sel)*((N-muestra_sel)/N)
-    med_total <- med_s*N
-    v_t <- var_var*N^2
-    Inf_int_var <- med_s*N-2*sqrt(v_t)
-    Sup_int_var <- med_s*N+2*sqrt(v_t)
-    col_noms <- c('n', 'Int. Inferior', 'Media muestra', 'Int. Superior', 
-                  'Desviación std.','Varianza', 'Coeficiente var.',
-                  'Int. Inferior total', 'Media Total', 
-                  'Int. Superior Total', 'Varianza Total')
-    results <- data.frame(muestra_sel, Inf_int_s,med_s,
-                          Sup_int_s, sd_s, var_var, Coef_var,
-                          Inf_int_var, med_total, 
-                          Sup_int_var, v_t)
-    rownames(results) <- names(data_sampling[n_var])
-    colnames(results) <- col_noms
-    print(results)
+
+est_total_simple2<- function(n, df){
+    require(TeachingSampling) # requiere este paquete y tener esta librería cargada
+    N <- nrow(df)
+    sample_1 <- sample(1:N, size=n,replace=FALSE) # se define muestreo a través de función sample
+    df_f <- df[sample_1,] # se realiza muestreo sobre la base de datos original. 
+    df_f <- apply(df_f, 2, as.numeric) # se hacen numericas todas las columnas
+    df_f <- as.data.frame(df_f) # se pasa a data frame en caso que no lo sea
+    table <- matrix(NA, nrow = 11, ncol = (dim(df_f)[2])) 
+    rownames(table) = c('n', 'Int.Inferior', 'Media muestra', 'Int.Superior', 
+                        'Desviacion std.','Varianza', 'Coeficiente var.',
+                        'Int.Inferior total', 'Media Total', 
+                        'Int.Superior Total', 'Varianza Total')
+    colnames(table) <- names(df)
+    for (k in 1:dim(df_f)[2]) {
+        med_s <- mean(df_f[,k]) # se obtiene la media para todas las variables
+        sd_s <- sd(df_f[,k]) # se obtiene la desviación para todas las variables
+        Inf_int_s <- med_s - 2 * (sd_s/sqrt(n)) # se obtiene el intevalo inf de media para todas las variables
+        Sup_int_s <- med_s + 2 * (sd_s/sqrt(n)) # se obtiene el intevalo sup de media para todas las variables
+        Coef_var <- (sd_s/med_s) # se obtiene coef de variación para todas las variables
+        var_var <- (sd_s^2/n)*((N-n)/N) # se obtiene la varianza para todas las variables
+        med_total <- med_s*N # se obtiene la media total para todas las variables
+        v_t <- var_var*N^2 # se obtiene la varianza total para todas las variables
+        Inf_int_var <- med_s*N-2*sqrt(v_t) # se obtiene el intevalo inf media total para todas las variables
+        Sup_int_var <- med_s*N+2*sqrt(v_t) # se obtiene el intevalo sup media total para todas las variables
+        table[, k] <- c(n, Inf_int_s, med_s, Sup_int_s, sd_s, var_var,
+                        Coef_var, Inf_int_var, med_total, Sup_int_var,v_t)
+    }
+    print(data.frame(t(table)))
 }
 
 
@@ -238,18 +245,18 @@ estm_pilot_sys <- function(df, N_pop, kp, N_confianza) {
 
 #### Función errores ####
 error_df_var <- function(data_est) {
-    mar_1 <- seq(0,data_est[1, 2]+0.8,by=0.08)
+    mar_1 <- seq(0,data_est[1, 2]+0.8,by=0.03)
     mar_2 <- seq(0,data_est[2, 2]+0.01, by=0.0006)
     mar_3 <- seq(0,data_est[3, 2], by=0.0004)
     mar_4 <- seq(0,data_est[4, 2]+0.1, by=0.01)
     mar_5 <- seq(0,data_est[5, 2]+0.001, by=0.00008)
-    mar_6 <- seq(0,data_est[6, 2], by=0.04)
+    mar_6 <- seq(0,data_est[6, 2], by=0.045)
     mar_7 <- seq(0,data_est[7, 2]+0.9, by=0.2)
     mar_8 <- seq(0,data_est[8, 2]+0.01, by=0.0015)
-    mar_9 <- seq(0,data_est[9, 2], by=0.3)
+    mar_9 <- seq(0,data_est[9, 2], by=0.004)
     mar_10 <- seq(0,data_est[10, 2], by=0.0006)
-    mar_11 <- seq(0,data_est[11, 2], by= 1000000000)
-    mar_12 <- seq(0,data_est[12, 2], by=0.0065)
+    mar_11 <- seq(0,data_est[11, 2], by= 0.015)
+    mar_12 <- seq(0,data_est[12, 2], by=0.0075)
     f_list <- list(mar_1, mar_2, mar_3, mar_4, mar_5, mar_6, 
                    mar_7, mar_8, mar_9, mar_10, mar_11, mar_12)
     n.obs <- sapply(f_list, length)
@@ -335,62 +342,37 @@ samp_final <- function(data_original, muestra_sel) {
 }
 
 #####función para obtención de estimadores finales ####
-est_final_sys <- function (data_sampling, n_var, N, muestra_sel) {
-    k_total <- round(N/muestra_sel)
-    med_s <- mean(data_sampling[,n_var])
-    sd_s <- sd(data_sampling[,n_var])
-    Inf_int_s <- med_s - 2 * (sd_s/sqrt(muestra_sel))
-    Sup_int_s <- med_s + 2 * (sd_s/sqrt(muestra_sel))
-    Coef_var <- (sd_s/med_s)
-    var_var <- (sd_s^2/muestra_sel)*((N-muestra_sel)/N)
-    med_total <- med_s*N
-    v_t <- var_var*N^2
-    Inf_int_var <- med_s*N-2*sqrt(v_t)
-    Sup_int_var <- med_s*N+2*sqrt(v_t)
-    col_noms <- c('n', 'kp', 'Int. Inferior', 'Media muestra', 'Int. Superior', 
-                  'Desviación std.','Varianza', 'Coeficiente var.',
-                  'Int. Inferior total', 'Media Total', 
-                  'Int. Superior Total', 'Varianza Total')
-    results <- data.frame(muestra_sel, k_total, Inf_int_s,med_s,
-               Sup_int_s, sd_s, var_var, Coef_var,
-                Inf_int_var, med_total, 
-               Sup_int_var, v_t)
-    rownames(results) <- names(data_sampling[n_var])
-    colnames(results) <- col_noms
-    print(results)
-}
-
-
-
-est_total_simple<- function(N, n, df){
-    df <- apply(df, 2, as.numeric)
-    df <- as.data.frame(df)
-    table <- matrix(NA, nrow = 10, ncol = (dim(df)[2]))
-    rownames(table) = c('Int. Inferior', 'Media muestra', 'Int. Superior', 
-                        'DesviaciÃ³n std.','Varianza', 'Coeficiente var.',
-                        'Int. Inferior total', 'Media Total', 
-                        'Int. Superior Total', 'Varianza Total')
+est_total_sys2<- function(n, df){
+    require(TeachingSampling) # requiere este paquete y tener esta librería cargada
+    N <- nrow(df)
+    kp <- round(N/n)
+    sample_1 <- S.SY(N, kp) # se define muestreon a través de función S.SY
+    df_f <- df[sample_1,] # se realiza muestreo sobre la base de datos original. 
+    df_f <- apply(df_f, 2, as.numeric) # se hacen numericas todas las columnas
+    df_f <- as.data.frame(df_f) # se pasa a data frame en caso que no lo sea
+    table <- matrix(NA, nrow = 12, ncol = (dim(df_f)[2])) 
+    rownames(table) = c('n', 'kp', 'Int.Inferior', 'Media muestra', 'Int.Superior', 
+                        'Desviacion std.','Varianza', 'Coeficiente var.',
+                        'Int.Inferior total', 'Media Total', 
+                        'Int.Superior Total', 'Varianza Total')
     colnames(table) <- names(df)
-    for (k in 1:dim(df)[2]) {
-        med_s <- mean(df[,k])
-        sd_s <- sd(df[,k])
-        Inf_int_s <- med_s - 2 * (sd_s/sqrt(n))
-        Sup_int_s <- med_s + 2 * (sd_s/sqrt(n))
-        Coef_var <- (sd_s/med_s)
-        var_var <- (sd_s^2/n)*((N-n)/N)
-        med_total <- med_s*N
-        v_t <- var_var*N^2
-        Inf_int_var <- med_s*N-2*sqrt(v_t)
-        Sup_int_var <- med_s*N+2*sqrt(v_t)
-        col_noms <- c('Int. Inferior', 'Media muestra', 'Int. Superior', 
-                      'Desviación std.','Varianza', 'Coeficiente var.',
-                      'Int. Inferior total', 'Media Total', 
-                      'Int. Superior Total', 'Varianza Total')
-        table[, k] <- c(Inf_int_s, med_s, Sup_int_s, sd_s, var_var,
+    for (k in 1:dim(df_f)[2]) {
+        med_s <- mean(df_f[,k]) # se obtiene la media para todas las variables
+        sd_s <- sd(df_f[,k]) # se obtiene la desviación para todas las variables
+        Inf_int_s <- med_s - 2 * (sd_s/sqrt(n)) # se obtiene el intevalo inf de media para todas las variables
+        Sup_int_s <- med_s + 2 * (sd_s/sqrt(n)) # se obtiene el intevalo sup de media para todas las variables
+        Coef_var <- (sd_s/med_s) # se obtiene coef de variación para todas las variables
+        var_var <- (sd_s^2/n)*((N-n)/N) # se obtiene la varianza para todas las variables
+        med_total <- med_s*N # se obtiene la media total para todas las variables
+        v_t <- var_var*N^2 # se obtiene la varianza total para todas las variables
+        Inf_int_var <- med_s*N-2*sqrt(v_t) # se obtiene el intevalo inf media total para todas las variables
+        Sup_int_var <- med_s*N+2*sqrt(v_t) # se obtiene el intevalo sup media total para todas las variables
+        table[, k] <- c(n, kp, Inf_int_s, med_s, Sup_int_s, sd_s, var_var,
                         Coef_var, Inf_int_var, med_total, Sup_int_var,v_t)
     }
     print(data.frame(t(table)))
 }
+
 ```
 
 # Actividad
@@ -733,8 +715,8 @@ v_12_simple <- graph_inf.finite(4898, e_list_simple, est_aleat_simple, 12, 0.95)
 ```{r n y error para cada variable alea simple, echo=FALSE, message=FALSE, results='asis'}
 ### selección de n = para cada variable ####
 Col_acept <- c('Error aceptado', 'Tamaño de muestra (n)')
-Error_acp <- c(0.25, 0.015, 0.012, 0.03, 0.012, 0.08, 0.3, 0.005, 0.6, 0.006, 0.2, 0.01)
-n_sample <- c(6,  1290, 1888, 1765, 2944, 342,  3, 2, 2, 2749, 152, 668)
+Error_acp <- c(0.01, 0.0104, 0.011, 0.03, 0.01225, 0.05, 0.2, 0.0015, 0.004, 0.0077 , 0.015, 0.0075 )
+n_sample <- c(600,  2089, 2093, 1765, 2895, 355,  7, 13, 543, 2142, 205, 1074)
 df_ns_simples <- data.frame(Error_acp, n_sample)
 colnames(df_ns_simples) <- Col_acept
 rownames(df_ns_simples) <- names(wine)
@@ -752,36 +734,7 @@ pandoc.table(df_ns_simples,
 ### Estimadores de las muestra finales utilizando el tamaño de muestra seleccionado para cada variable.
 
 ```{r estimadores finales simple 1, include=FALSE, echo=FALSE}
-simple_v1 <- sam_final_simple(wine, 6)
-simple_v2 <- sam_final_simple(wine, 1290)
-simple_v3 <- sam_final_simple(wine, 1888)
-simple_v4 <- sam_final_simple(wine, 1765)
-simple_v5 <- sam_final_simple(wine, 2944)
-simple_v6 <- sam_final_simple(wine, 342)
-simple_v7 <- sam_final_simple(wine, 3)
-simple_v8 <- sam_final_simple(wine, 2)
-simple_v9 <- sam_final_simple(wine, 2)
-simple_v10 <- sam_final_simple(wine, 2749)
-simple_v11 <- sam_final_simple(wine, 152)
-simple_v12 <- sam_final_simple(wine, 668)
-
-x_1simple1<- est_final_simple(simple_v1, 1, 4898, 6)
-x_2simple2 <- est_final_simple(simple_v2, 2, 4898, 1290)
-x_3simple3 <- est_final_simple(simple_v3, 3, 4898, 1888)
-x_4simple4 <- est_final_simple(simple_v4, 4, 4898, 1765)
-x_5simple5 <- est_final_simple(simple_v5, 5, 4898, 2944)
-x_6simple6 <- est_final_simple(simple_v6, 6, 4898, 342)
-x_7simple7 <- est_final_simple(simple_v7, 7, 4898, 3)
-x_8simple8 <- est_final_simple(simple_v8, 8, 4898, 2)
-x_9simple9 <- est_final_simple(simple_v9, 9, 4898, 2)
-x_10simple10 <- est_final_simple(simple_v10, 10, 4898, 2749)
-x_11simple11 <- est_final_simple(simple_v11, 11, 4898, 152)
-x_12simple12 <- est_final_simple(simple_v12, 12, 4898, 668)
-
-df_SIMPLE_final<- as.data.frame(rbind(x_1simple1, x_2simple2, x_3simple3, 
-                      x_4simple4, x_5simple5, x_6simple6, 
-                      x_7simple7, x_8simple8, x_9simple9, 
-                      x_10simple10, x_11simple11, x_12simple12))
+df_SIMPLE_final <- est_total_simple2(600, wine)
 
 ```
 
@@ -790,13 +743,202 @@ panderOptions('missing', '---')
 pandoc.table(df_SIMPLE_final,
              caption = 
              'Tabla estimadores de la muestra y totales 
-             para cada variable usando el valor de $n$ resultado del piloto',
-             digits = 3,
-             split.cells = 2,
-             split.table = 90,
+             usando el valor de $n = 600$ resultado del piloto para la variable: fixed.acidity',
+             digits = 4,
+             split.table = 125,
              align = 'r')
 ```
 
+```{r estimadores finales simple 2, include=FALSE, echo=FALSE}
+df_SIMPLE_final2 <- est_total_simple2(2089, wine)
+
+```
+
+```{r estimadores finales simple_ 2, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final2,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 2089$ resultado del piloto para la variable: volatile.acidity',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 3, include=FALSE, echo=FALSE}
+df_SIMPLE_final3 <- est_total_simple2(2093, wine)
+
+```
+
+```{r estimadores finales simple_ 3, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final3,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 2093$ resultado del piloto para la variable: citric.acid',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 4, include=FALSE, echo=FALSE}
+df_SIMPLE_final4 <- est_total_simple2(1765, wine)
+
+```
+
+```{r estimadores finales simple_ 4, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final4,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 1765$ resultado del piloto para la variable: residual.sugar',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 5, include=FALSE, echo=FALSE}
+df_SIMPLE_final5 <- est_total_simple2(2895, wine)
+
+```
+
+```{r estimadores finales simple_ 5, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final5,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 2895$ resultado del piloto para la variable: chlorides',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 6, include=FALSE, echo=FALSE}
+df_SIMPLE_final6 <- est_total_simple2(355, wine)
+
+```
+
+```{r estimadores finales simple_ 6, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final6,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 355$ resultado del piloto para la variable: free.sulfur.dioxide',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 7, include=FALSE, echo=FALSE}
+df_SIMPLE_final7 <- est_total_simple2(7, wine)
+
+```
+
+```{r estimadores finales simple_ 7, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final7,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 7$ resultado del piloto para la variable: total.sulfur.dioxide',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 8, include=FALSE, echo=FALSE}
+df_SIMPLE_final8 <- est_total_simple2(13, wine)
+
+```
+
+```{r estimadores finales simple_ 8, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final8,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 13$ resultado del piloto para la variable: density',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 9, include=FALSE, echo=FALSE}
+df_SIMPLE_final9 <- est_total_simple2(543, wine)
+
+```
+
+```{r estimadores finales simple_ 9, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final9,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 543$ resultado del piloto para la variable: pH',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 10, include=FALSE, echo=FALSE}
+df_SIMPLE_final10 <- est_total_simple2(2142, wine)
+
+```
+
+```{r estimadores finales simple_ 10, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final10,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 2142$ resultado del piloto para la variable: sulphates',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 11, include=FALSE, echo=FALSE}
+df_SIMPLE_final11 <- est_total_simple2(205, wine)
+
+```
+
+```{r estimadores finales simple_ 11, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final11,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 205$ resultado del piloto para la variable: alcohol',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r estimadores finales simple 12, include=FALSE, echo=FALSE}
+df_SIMPLE_final12<- est_total_simple2(1074, wine)
+
+```
+
+```{r estimadores finales simple_ 12, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SIMPLE_final12,
+             caption = 
+             'Tabla estimadores de la muestra y totales 
+             usando el valor de $n = 1074$ resultado del piloto para la variable: quality',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+# Conclusiones y comentarios de muestreo aleatorio simple
+
+Se llevó acabo un análisis de muestreo aleatorio simple; se obtuvo inicialmente el tamaño de muestre de la prueba piloto como se indicó anteriomente (tabla 1.), seguidamente se realizó una análisis de estimadores (tabla 2.) y a través de este procedimiento se obtuvo el "error estimado" para cada una de las variables del piloto. 
+
+Se construyó una tabla de "margenes de error" para los errores estimados" (tabla 3.), debido a las unidades y los números manejados para cada una de las variables, las secuencias de errores se estableció de manera independiente para cada variable. 
+
+Con esta tabla, se siguió a un análisis del estimado del tamaño muestral por método basado en población finita e infinita. Para cada una de las variables se obtuvo una tabla de errores y los posibles tamaños de muestra para población infinita (P_infinite_s) y población finita (P_finite_s), Las gráficas obtenidas van desde la 1 a la 12 y las tablas, desde la 4 a la 15. 
+
+Con esta información se decidió tomar un valor de tamaño muestra posible con la aceptación de un grado de error para cada variable. La **tabla 16** muestra estos resultados. Como se puede observa existen variables que presentan valores muy bajos de tamaño muestral como `total.sulfur.dioxide` ($n = 7$), esto puede ser dado a la poca varianza de esta variable, como se observa en la tabla 2. Para las otras variables se decidió tomar una muestra casi intermedia de la población total; claramente esta selección que parece arbitraría, se debe definir con otras variables que no dependen de este análisis (económicas, recursos, etc.). El criterio de selección acá fue la minimización máxima del error aceptado con la inclusión de mayor cantidad de personas. 
+
+Finalmente, se realizó un remuestreo a través de un método aleatorio simple en la población original, utilizan los tamaños de muestra (n) obtenidos en el análisis de la prueba piloto. A estos nuevos muestreos que acá llamaré muestreos finales, se le hallaron los estimadores finales de cada variable, a saber: `Int.Inferior`, `Media.muestra`, `Int.Superior`, `Desviacion.std.`, `Varianza`, `Coeficiente.var.`, `Int.Inferior.total`, `Media.Total`, `Int.Superior.Total`, `Varianza.Total`. Este procedimiento se realizó para el tamaño de muestra (n) obtenido de cada una de las variables. 
+Estos resultados reposan en las **tablas 17 a la 39**. 
+
+#####################################################################################
 
 ## Muestreo sistematico
 
@@ -1090,8 +1232,8 @@ Gr.sys_inf.finite(4898, e_list, tab_est, 12, 0.95)
 ```{r n y error para cada variable SYS, echo=FALSE, message=FALSE, results='asis'}
 ### selección de n = para cada variable ####
 Col_acept_sys <- c('Error aceptado', 'Tamaño de muestra (n)')
-Error_acp_sys <- c(0.72, 0.003, 0.0032, 0.17, 0.00048, 1.16, 6, 0.0015, 2.7, 0.003, 2e+10, 0.026)
-n_sample_sys <- c(2177,  2444, 2457, 2502, 2012, 2501,  2470, 26, 2570, 2591, 4838, 2136)
+Error_acp_sys <- c(0.03, 0.003, 0.004, 0.16, 0.00072, 0.54, 1.6, 0.0015, 0.008, 0.0036, 0.045, 0.0375)
+n_sample_sys <- c(1971,  2056, 2021, 2113, 1990, 2125,  1856, 15, 1021, 2000, 1743, 1560)
 df_ns_sys <- data.frame(Error_acp_sys, n_sample_sys)
 colnames(df_ns_sys) <- Col_acept_sys
 rownames(df_ns_sys) <- names(wine)
@@ -1108,64 +1250,196 @@ pandoc.table(df_ns_sys,
 
 ### Estimadores de las muestra finales utilizando el tamaño de muestra seleccionado para cada variable (muestreo sistemático)
 
-```{r estimadores finales sys simple 1, include=FALSE, echo=FALSE}
-sys_v1 <- samp_final(wine, 2177)
-sys_v2 <- samp_final(wine, 2444)
-sys_v3 <- samp_final(wine, 2457)
-sys_v4 <- samp_final(wine, 2502)
-sys_v5 <- samp_final(wine, 2012)
-sys_v6 <- samp_final(wine, 2501)
-sys_v7 <- samp_final(wine, 2470)
-sys_v8 <- samp_final(wine, 26)
-sys_v9 <- samp_final(wine, 2570)
-sys_v10 <- samp_final(wine, 2591)
-sys_v11 <- samp_final(wine, 4838)
-sys_v12 <- samp_final(wine, 2136)
-
-x_1sys1<- est_final_sys(sys_v1, 1, 4898, 2177)
-x_2sys2 <- est_final_sys(sys_v2, 2, 4898, 2444)
-x_3sys3 <- est_final_sys(sys_v3, 3, 4898, 2457)
-x_4sys4 <- est_final_sys(sys_v4, 4, 4898, 2502)
-x_5sys5 <- est_final_sys(sys_v5, 5, 4898, 2012)
-x_6sys6 <- est_final_sys(sys_v6, 6, 4898, 2501)
-x_7sys7 <- est_final_sys(sys_v7, 7, 4898, 2470)
-x_8sys8 <- est_final_sys(sys_v8, 8, 4898, 26)
-x_9sys9 <- est_final_sys(sys_v9, 9, 4898, 2570)
-x_10sys10 <- est_final_sys(sys_v10, 10, 4898, 2591)
-x_11sys11 <- est_final_sys(sys_v11, 11, 4898, 4838)
-x_12sys12 <- est_final_sys(sys_v12, 12, 4898, 2136)
-
-df_sys_final<- as.data.frame(rbind(x_1sys1, x_2sys2, x_3sys3, 
-                      x_4sys4, x_5sys5, x_6sys6, 
-                      x_7sys7, x_8sys8, x_9sys9, 
-                      x_10sys10, x_11sys11, x_12sys12))
-
+```{r cosa final, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final <- est_total_sys2(1971, wine)
 ```
 
 ```{r estimadores finales sys1, echo=FALSE, message=FALSE, results='asis'}
 panderOptions('missing', '---')
-pandoc.table(df_sys_final,
+pandoc.table(df_SYS_final,
              caption = 
-             'Tabla estimadores de la muestra y totales 
-             para cada variable usando el valor de $n$ resultado del piloto',
-             digits = 3,
-             split.cells = 2,
-             split.table = 90,
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 1971$ resultado del piloto para la variable: fixed.acidity',
+             digits = 4,
+             split.table = 125,
              align = 'r')
 ```
 
-```{r cosa end, echo=FALSE, message=FALSE, results='asis'}
-xp <- est_total_simple(4898, 254, wine)
+```{r cosa final 2, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final2 <- est_total_sys2(2056, wine)
 ```
 
-```{r estimadores finales tttt sys1, echo=FALSE, message=FALSE, results='asis'}
+```{r estimadores finales sys2, echo=FALSE, message=FALSE, results='asis'}
 panderOptions('missing', '---')
-pandoc.table(xp,
+pandoc.table(df_SYS_final2,
              caption = 
-             'Tabla estimadores de la muestra y totales 
-             para cada variable usando el valor de $n$ resultado del piloto',
-             digits = 3,
-             split.cells = 2,
-             split.table = 90,
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 2056$ resultado del piloto para la variable: volatile.acidity',
+             digits = 4,
+             split.table = 125,
              align = 'r')
 ```
+
+```{r cosa final 3, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final3 <- est_total_sys2(2021, wine)
+```
+
+```{r estimadores finales sys3, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final3,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 2021$ resultado del piloto para la variable: citric.acid',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 4, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final4 <- est_total_sys2(2113, wine)
+```
+
+```{r estimadores finales sys4, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final4,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 2113$ resultado del piloto para la variable: residual.sugar',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 5, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final5 <- est_total_sys2(1990, wine)
+```
+
+```{r estimadores finales sys5, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final5,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 1990$ resultado del piloto para la variable: chlorides',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 6, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final6 <- est_total_sys2(2125, wine)
+```
+
+```{r estimadores finales sys6, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final6,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 2125$ resultado del piloto para la variable: free.sulfur.dioxide',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 7, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final7 <- est_total_sys2(1856, wine)
+```
+
+```{r estimadores finales sys7, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final7,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 1856$ resultado del piloto para la variable: total.sulfur.dioxide ',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 8, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final8 <- est_total_sys2(15, wine)
+```
+
+```{r estimadores finales sys8, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final8,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 15$ resultado del piloto para la variable: density ',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 9, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final9 <- est_total_sys2(1021, wine)
+```
+
+```{r estimadores finales sys9, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final9,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 1021$ resultado del piloto para la variable: pH ',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 10, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final10 <- est_total_sys2(2000, wine)
+```
+
+```{r estimadores finales sys10, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final10,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 2000$ resultado del piloto para la variable: sulphates ',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 11, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final11 <- est_total_sys2(1743, wine)
+```
+
+```{r estimadores finales sys11, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final11,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 1743$ resultado del piloto para la variable: alcohol ',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+```{r cosa final 12, echo=FALSE, message=FALSE, include=FALSE, results='asis'}
+df_SYS_final12 <- est_total_sys2(1560, wine)
+```
+
+```{r estimadores finales sys12, echo=FALSE, message=FALSE, results='asis'}
+panderOptions('missing', '---')
+pandoc.table(df_SYS_final12,
+             caption = 
+             'Tabla estimadores (muestreo sistemático) de la muestra y totales 
+             usando el valor de $n = 1560$ resultado del piloto para la variable: quality ',
+             digits = 4,
+             split.table = 125,
+             align = 'r')
+```
+
+
+
+# Conlusiones y comentarios del muestreo sistemático
+En la segunda parte de esta actividad, se llevó acabo un análisis de muestreo sistemático; se obtuvo inicialmente el tamaño de muestre de la prueba piloto como se indicó anteriomente (tabla 41.), además se obtuvo un valor de $Kp = 20$ para la piloto. Seguidamente se realizó una análisis de estimadores (tabla 42.) y a través de este procedimiento se obtuvo el "error estimado" para cada una de las variables del piloto. 
+
+Se construyó una tabla de "margenes de error" para los errores estimados" (tabla 43.), debido a las unidades y los números manejados para cada una de las variables, las secuencias de errores se estableció de manera independiente para cada variable. 
+
+Con esta tabla, se siguió a un análisis del estimado del tamaño muestral por método basado en población finita e infinita. Para cada una de las variables se obtuvo una tabla de errores y los posibles tamaños de muestra para población infinita (P_infinite_s) y población finita (P_finite_s), Las gráficas obtenidas van desde la 13 a la 24 y las tablas, desde la 44 a la 55. 
+
+Con esta información se decidió tomar un valor de tamaño muestra posible con la aceptación de un grado de error para cada variable. La **tabla 56** muestra estos resultados. Como se puede observa existen variables que presentan valores muy bajos de tamaño muestral como `density` ($n = 15$), esto puede ser dado a la poca varianza de las observaciones obtenidas por este muestreo para el pilot, como se observa en la tabla 42. Para las otras variables se decidió tomar una muestra casi intermedia de la población total; claramente esta selección que parece arbitraría, se debe definir con otras variables que no dependen de este análisis (económicas, recursos, etc.). El criterio de selección acá fue la minimización máxima del error aceptado con la inclusión de mayor cantidad de personas. 
+
+Finalmente, se realizó un remuestreo a través de un método aleatorio simple en la población original, utilizan los tamaños de muestra (n) obtenidos en el análisis de la prueba piloto. A estos nuevos muestreos que acá llamaré muestreos finales, se le hallaron los estimadores finales de cada variable, a saber: `Int.Inferior`, `Media.muestra`, `Int.Superior`, `Desviacion.std.`, `Varianza`, `Coeficiente.var.`, `Int.Inferior.total`, `Media.Total`, `Int.Superior.Total`, `Varianza.Total`. Este procedimiento se realizó para el tamaño de muestra (n) obtenido de cada una de las variables. 
+Estos resultados reposan en las **tablas 57 a la 79**. 
